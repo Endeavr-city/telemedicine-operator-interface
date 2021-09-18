@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+
+    <title>Booth Closed</title>
+
+    <style>
+      img {
+        height: 12vh;
+      }
+
+      #both {
+        padding: 15px;
+      }
+
+      #os, #user {
+        position: absolute;
+        bottom: 8px;
+      }
+      #os {
+        right: 16px;
+      }
+      #user {
+        left: 16px;
+      }
+    </style>
+  </head>
+  
+  <script>
+
+    var id;
+    var url;
+    var os;
+
+    function initInterface() {
+      document.getElementById("both").disabled = true
+      os = checkOS()
+      document.getElementById("os").innerHTML = "OS: " + os
+      getId();
+      google.script.run.withSuccessHandler(function(email) {
+        document.getElementById("user").innerHTML = "User: " + email
+      }).getUserEmail();
+    }
+
+    function getId() {
+      document.getElementById("status").style.color = "black"
+      document.getElementById("status").innerHTML = "Loading Google Meet..."
+      google.script.run.withSuccessHandler(function(id) {
+        this.id = id
+        this.url = "meet.google.com/"+id
+        document.getElementById("status").innerHTML = "Google Meet ID: <a href=\""+url+"\"> "+id+"</a>"
+        document.getElementById("both").disabled = false
+      }).withFailureHandler(onFailure).getBoothId()
+    }
+
+    function openMeet() {
+      document.getElementById("status").innerHTML = "Opening..."
+      if (os == "iOS") { window.open("gmeet://"+id, "_blank"); }
+      else if (os == "Android") { window.open("http://"+url, "_blank"); }
+      else { window.open("https://"+url, "_blank"); }
+      document.getElementById("status").innerHTML = "Booth opened";
+      google.script.run.withFailureHandler(onFailure).operatorOpenedMeet(true)
+    }
+
+    function openForm(callback) {
+      window.open("https://forms.gle/ikqkodxgfX2HwoxG8", "_top")
+      callback();
+    }
+
+    function openBoth() {
+      openForm(openMeet);
+    }
+
+    function onFailure(error) {
+      document.getElementById("status").innerHTML = "ERROR: " + error.message
+      document.getElementById("status").style.color = "red"
+    }
+
+
+    function checkOS() {
+      var clientStrings = [
+          {s:'Windows 10', r:/(Windows 10.0|Windows NT 10.0)/},
+          {s:'Windows 8.1', r:/(Windows 8.1|Windows NT 6.3)/},
+          {s:'Windows 8', r:/(Windows 8|Windows NT 6.2)/},
+          {s:'Windows 7', r:/(Windows 7|Windows NT 6.1)/},
+          {s:'Windows Vista', r:/Windows NT 6.0/},
+          {s:'Windows Server 2003', r:/Windows NT 5.2/},
+          {s:'Windows XP', r:/(Windows NT 5.1|Windows XP)/},
+          {s:'Windows 2000', r:/(Windows NT 5.0|Windows 2000)/},
+          {s:'Windows ME', r:/(Win 9x 4.90|Windows ME)/},
+          {s:'Windows 98', r:/(Windows 98|Win98)/},
+          {s:'Windows 95', r:/(Windows 95|Win95|Windows_95)/},
+          {s:'Windows NT 4.0', r:/(Windows NT 4.0|WinNT4.0|WinNT|Windows NT)/},
+          {s:'Windows CE', r:/Windows CE/},
+          {s:'Windows 3.11', r:/Win16/},
+          {s:'Android', r:/Android/},
+          {s:'Open BSD', r:/OpenBSD/},
+          {s:'Sun OS', r:/SunOS/},
+          {s:'Chrome OS', r:/CrOS/},
+          {s:'Linux', r:/(Linux|X11(?!.*CrOS))/},
+          {s:'iOS', r:/(iPhone|iPad|iPod)/},
+          {s:'Mac OS X', r:/Mac OS X/},
+          {s:'Mac OS', r:/(Mac OS|MacPPC|MacIntel|Mac_PowerPC|Macintosh)/},
+          {s:'QNX', r:/QNX/},
+          {s:'UNIX', r:/UNIX/},
+          {s:'BeOS', r:/BeOS/},
+          {s:'OS/2', r:/OS\/2/},
+          {s:'Search Bot', r:/(nuhk|Googlebot|Yammybot|Openbot|Slurp|MSNBot|Ask Jeeves\/Teoma|ia_archiver)/}
+      ];
+      for (var id in clientStrings) {
+        var cs = clientStrings[id];
+        if (cs.r.test(navigator.userAgent)) {
+          return cs.s;
+        }
+      }
+    }
+
+
+  </script>
+
+  <body onload="initInterface()">
+
+    <center>
+      <img src="https://i.postimg.cc/m2bXVsCY/ENDEAVR-main-logo.png">
+      <h1>Booth locked</h1>
+      <p>It doesn't appear as though an operator is needed right now...</p>
+      <p>Open anyways?</p>
+      <button id="both" onclick="this.disabled=true; openBoth();">Open Intake Form/Meeting</button>
+      <br><br>
+      <a id="form" href="https://forms.gle/ikqkodxgfX2HwoxG8" target="_blank">Intake Form</a>
+      <p id="status"></p>
+    </center>
+
+    <p id="user"></p>
+    <p id="os"></p>
+
+  </body>
+
+</html>
