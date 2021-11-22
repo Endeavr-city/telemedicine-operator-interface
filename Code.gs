@@ -1,23 +1,12 @@
-var twilioAuth
-var twilioSid
-var twilioNum
 var textPassword
 var props = PropertiesService.getScriptProperties()
+var operatorData = SpreadsheetApp.openById(operatorDataId)
+var secretData = operatorData.getSheetByName("Secrets")
 
 var boothCooldown = 5; // mins
 
 const appUrl = ScriptApp.getService().getUrl()
 const form2Url = "https://forms.gle/ikqkodxgfX2HwoxG8"
-
-function getSecretsSheet() {
-  // const secretsId = "1VXrTgy-SH26KlhjpXkYEKpfJU6n2f84dxINq6Kyz-hM"
-  // return SpreadsheetApp.openById(secretsId).getActiveSheet()
-  return getOperatorDataSpreadsheet().getSheetByName("Secrets")
-}
-function getOperatorDataSpreadsheet() {
-  const operatorDataId = "1m2pxwcB542VDeeMtaMP_sROX86DMSqSz0ahmTzWwB4g"
-  return SpreadsheetApp.openById(operatorDataId)
-}
 
 // Called by booth kiosk script when button is pressed so that notification goes out to operators
 function doPost(e) {
@@ -31,7 +20,7 @@ function doPost(e) {
     console.error("Could not find data in post body, or incorrect password")
     return ContentService.createTextOutput(`Could not find required data in post body: ` + JSON.stringify(e))
   }
-  sendAllOperators(`Patient has joined the booth! Assistant needed:\n${appUrl}`)
+  sendAllOperators(`Patient has joined the ENDEAVR booth! Assistant needed:\n${appUrl}`)
   unlockBooth()
   console.log("Completed doPost")
   return ContentService.createTextOutput(`Text sent to operators`)
@@ -81,14 +70,14 @@ function logOperator() {
   var timestamp = time.toLocaleString()
   console.log("Logging operator " + currentUser)
 
+  textPassword = getServicePassword()
   var data = {
-    "password": getServicePassword(),
+    "password": textPassword,
     "timestamp": timestamp,
     "user": currentUser,
     "locked": locked
   }
 
-  textPassword = getServicePassword()
   token = ScriptApp.getOAuthToken()
   var options = {
     'method': 'post',
@@ -106,21 +95,18 @@ function logOperator() {
     message = response.message
   } catch(e) {
     console.error(e)
-    sendText("(512) 461-7383", "Failed to log operator "+currentUser+"!\nBooth locked: "+locked)
+    getTwilioCredentials();
+    sendText("(512) 461-7383", "Failed to log operator "+currentUser+"!\nBooth locked: "+locked, 0)
   }
   console.log("Log operator "+currentUser+" response message: "+message)
 }
 
 function getServicePassword() {
-  return getSecretsSheet().getRange('B4').getValue()
+  return secretData.getRange('B4').getValue()
 }
-
-function getBoothUrl() {
-  return getSecretsSheet().getRange('B5').getValue()
-}
-
 function getBoothId() {
-  var id = getBoothUrl().substring(24);
+  var url = secretData.getRange('B5').getValue()
+  var id = url.substring(24);
   console.log("Returning ID: " + id);
   return id;
 }
@@ -134,8 +120,8 @@ function lockBooth() {
   props.setProperty("locked", "true")
 }
 
-// Sets the "lastOpened" property to "0" time, which was years ago, and greater than whatever the cooldown is 
 function unlockBooth() {
+  console.log("Unlocking booth")
   props.setProperty("locked", "false")
 }
 

@@ -1,30 +1,41 @@
-// Sends a message to all booth operators
+var twilioAuth
+var twilioSid
+
+// Sends a message to all active booth operators
 function sendAllOperators(message) {
   console.log("Sending message to all active operators")
   getTwilioCredentials();
-  var ss = getOperatorDataSpreadsheet()
-  sheet = ss.getSheetByName('Contact')
+  sheet = operatorData.getSheetByName('Contact')
   lastRow = sheet.getLastRow()
+
   var vals = sheet.getRange(2, 1, lastRow-1, 4).getValues()
+  var i = 0;
   for (const operator of vals) {
     var active = operator[3]
     var phone = operator[0]
     if (active) {
       console.log("Sending text to " + operator[2])
-      sendText(phone, message)
+      sendText(phone, message, i++);
+      i = i % phonenumbers.length;
     }
   }
   console.log("Finished sending messages")
 }
 
 // Sends a text to "to" with message "body"
-function sendText(to, body) {
+// The phonegroup identifies which Twilio number the message
+// will be sent from. 0 <= phonegroup <= phonenumbers.length-1
+function sendText(to, body, phonegroup) {
+  if (!validateTwilioCredentials()) {
+    getTwilioCredentials();
+  }
+
   var messages_url = `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`;
 
   var payload = {
     "To": to,
     "Body" : body,
-    "From" : twilioNum
+    "From" : phonenumbers[phonegroup]
   };
 
   var options = {
@@ -45,6 +56,7 @@ function sendText(to, body) {
 
 // Gets Twilio credentials from a secure spreadsheet
 function getTwilioCredentials() {
+  // If credentials have already been fetched, don't fetch again
   if (validateTwilioCredentials()) return;
 
   textPassword = getServicePassword()
@@ -53,6 +65,7 @@ function getTwilioCredentials() {
     'method': 'post',
     'contentType': 'application/json',
     'headers': {Authorization: 'Bearer ' + token},
+    'muteHttpExceptions': false,
     'payload': JSON.stringify({'password': textPassword})
   };
 
@@ -60,7 +73,7 @@ function getTwilioCredentials() {
   var response;
 
   try {
-    var resp = UrlFetchApp.fetch(`https://script.google.com/a/macros/endeavr.city/s/AKfycbzGjFT5PjGIISD3CBMpZi-eQVZt8BethgYaFGicCiEDlGBVUJh1OHlurRfkzX494p8O/exec?endpoint=twilio`, options)
+    var resp = UrlFetchApp.fetch(twilioSecretsUrl, options)
     response = JSON.parse(resp)
     message = response.message
   } catch(e) {
@@ -72,11 +85,10 @@ function getTwilioCredentials() {
   }
   
   twilioAuth = response.auth
-  twilioNum = response.num
   twilioSid = response.sid
   console.log("Twilio Credentials valid? " + validateTwilioCredentials())
 }
 
 function validateTwilioCredentials() {
-  return (twilioAuth != null && twilioNum != null && twilioSid != null)
+  return (twilioAuth != null && twilioSid != null)
 }
